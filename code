@@ -1,0 +1,107 @@
+E_Data <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Group_6667_E.csv", header = TRUE)
+G_Data <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Group_6667_G.csv", header = TRUE)
+Y_Data <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Group_6667_Y.csv", header = TRUE)
+
+my_temp_data <- merge(Y_Data,E_Data)
+dataset <- merge(my_temp_data,G_Data)
+completeData <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Complete Data.csv", header = TRUE)
+
+"dataset.mis <- prodNA(dataset, noNA = 0.1)
+summary(dataset.mis)
+dataset.mis <- subset(dataset.mis, select = -c(ID))
+summary(dataset.mis)
+imputed_Data <- mice(dataset.mis,m=5,maxit=50, method = 'pmm', seed = 500)
+summary(imputed_Data)
+completeData <- complete(imputed_Data,2)
+describe(completeData)"
+#write.csv(completeData, "Complete Data.csv")
+
+attach(completeData)
+shapiro.test(E1)$p.value
+hist(E1)
+shapiro.test(E2)$p.value
+hist(E2)
+shapiro.test(E3)$p.value
+hist(E3)
+shapiro.test(E4)$p.value
+hist(E4)
+shapiro.test(E5)$p.value
+hist(E5)
+shapiro.test(E6)$p.value
+hist(E6)
+shapiro.test(Y)$p.value
+detach(completeData)
+#Non significant at .01 sig level => normally distributed
+hist(completeData$Y)
+qqnorm(completeData$Y)
+qqline(completeData$Y, col = "red", lwd = 2)
+car::qqPlot(completeData$Y)
+
+mydata.cor <- cor(completeData)
+corrplot(mydata.cor)
+ModelE <- lm(Y^(2/3) ~ E1 * E2 * E3 * E4 * E5 * E6, data = completeData)
+summary(ModelE)
+VIF(ModelE) #less than 10 => no evidence of multicollinearity
+car::ncvTest(ModelE)
+plot(resid(ModelE) ~ fitted(ModelE), main = 'Residual Plot')
+abline(0,0)
+
+ModelComplete <- lm(Y ~ . , data=completeData)
+summary(ModelComplete)
+VIF(ModelComplete)
+car::ncvTest(ModelComplete)
+plot(resid(ModelComplete) ~ fitted(ModelComplete), main = 'Residual Plot')
+abline(0,0)
+
+ModelRaw <- lm(Y ~ (.)^2 , data = completeData)
+summary(ModelRaw)
+VIF(ModelRaw) #none
+car::ncvTest(ModelRaw)
+b <- boxcox(ModelRaw)
+lambda <- b$x
+lik <- b$y
+bc <- cbind(lambda,lik)
+sorted_bc <- bc[order(-lik),]
+head(sorted_bc, n=10)
+plot(resid(ModelRaw) ~ fitted(ModelRaw), main = 'Residual Plot')
+abline(0,0)
+
+ModelTransform <- lm((Y)^(2/3) ~ (.)^2 , data=completeData)
+summary(ModelTransform)
+VIF(ModelTransform) #none
+car::ncvTest(ModelTransform)
+b <- boxcox(ModelRaw)
+lambda <- b$x
+lik <- b$y
+bc <- cbind(lambda,lik)
+sorted_bc <- bc[order(-lik),]
+head(sorted_bc, n=10)
+plot(resid(ModelTransform)~fitted(ModelTransform), main = 'New Residual Plot')
+abline(0,0)
+
+Model <- regsubsets(Y^(2/3) ~ (.)^2 , data = completeData, nbest = 1, nvmax = 5, method = 'backward', intercept = TRUE)
+temp <- summary(Model)
+Var <- colnames(model.matrix(ModelTransform))
+Model_Select <- apply(temp$which, 1, 
+                  function(x) paste0(Var[x], collapse='+'))
+kable(data.frame(cbind( model = Model_Select, adjR2 = temp$adjr2, BIC = temp$bic)),
+      caption='Model Summary')
+
+M_main <- lm( Y^(2/3) ~ . , data=completeData)
+temp <- summary(M_main)
+kable(temp$coefficients[ abs(temp$coefficients[,4]) <= 0.01, ], caption='Sig Coefficients')
+
+M_2nd <- lm(Y^(2/3) ~ (.)^2 , data=completeData)
+temp <- summary(M_2nd)
+kable(temp$coefficients[ abs(temp$coefficients[,4])<= .01, ],caption = "2nd Interaction")
+
+M_2stage <- lm(Y^(2/3) ~ (E3+E5+E6+G23+G12+E2+G22+G16+G4+G17+G25+G5+G9+G19+G10+G20+G14)^2, data=completeData)
+temp <- summary(M_2stage)
+temp$coefficients[ abs(temp$coefficients[,3]) >= 2.5,]
+
+FINALMODEL <- lm(Y^(2/3) ~ E3+E5+E6+G17:G19, data = completeData)
+summary(FINALMODEL)
+plot(resid(FINALMODEL)~fitted(FINALMODEL), main = 'New Residual Plot')
+abline(0,0)
+plot(FINALMODEL)
+anova(FINALMODEL)
