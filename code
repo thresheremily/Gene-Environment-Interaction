@@ -1,11 +1,14 @@
+# Import data
 E_Data <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Group_6667_E.csv", header = TRUE)
 G_Data <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Group_6667_G.csv", header = TRUE)
 Y_Data <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Group_6667_Y.csv", header = TRUE)
 
+# Combine dataset
 my_temp_data <- merge(Y_Data,E_Data)
 dataset <- merge(my_temp_data,G_Data)
 completeData <- read.csv(file = "C:/Users/emthr/Documents/Spring 2019/AMS 578/Complete Data.csv", header = TRUE)
 
+# Impute missing values - Simple Random Imputation
 "dataset.mis <- prodNA(dataset, noNA = 0.1)
 summary(dataset.mis)
 dataset.mis <- subset(dataset.mis, select = -c(ID))
@@ -16,6 +19,7 @@ completeData <- complete(imputed_Data,2)
 describe(completeData)"
 #write.csv(completeData, "Complete Data.csv")
 
+# Check normality
 attach(completeData)
 shapiro.test(E1)$p.value
 hist(E1)
@@ -37,6 +41,8 @@ qqnorm(completeData$Y)
 qqline(completeData$Y, col = "red", lwd = 2)
 car::qqPlot(completeData$Y)
 
+# Model Creation
+## Manual Selections
 mydata.cor <- cor(completeData)
 corrplot(mydata.cor)
 ModelE <- lm(Y^(2/3) ~ E1 * E2 * E3 * E4 * E5 * E6, data = completeData)
@@ -79,6 +85,7 @@ head(sorted_bc, n=10)
 plot(resid(ModelTransform)~fitted(ModelTransform), main = 'New Residual Plot')
 abline(0,0)
 
+## Using Stepwise Regression
 Model <- regsubsets(Y^(2/3) ~ (.)^2 , data = completeData, nbest = 1, nvmax = 5, method = 'backward', intercept = TRUE)
 temp <- summary(Model)
 Var <- colnames(model.matrix(ModelTransform))
@@ -99,6 +106,7 @@ M_2stage <- lm(Y^(2/3) ~ (E3+E5+E6+G23+G12+E2+G22+G16+G4+G17+G25+G5+G9+G19+G10+G
 temp <- summary(M_2stage)
 temp$coefficients[ abs(temp$coefficients[,3]) >= 2.5,]
 
+# Final Model
 FINALMODEL <- lm(Y^(2/3) ~ E3+E5+E6+G17:G19, data = completeData)
 summary(FINALMODEL)
 plot(resid(FINALMODEL)~fitted(FINALMODEL), main = 'New Residual Plot')
